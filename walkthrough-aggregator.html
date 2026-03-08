@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Walkthrough Data Aggregator</title>
+  <style>
+    :root {
+      --navy:        #1B2A4A;
+      --navy-dark:   #0F1D35;
+      --navy-mid:    #243560;
+      --navy-light:  #2D4275;
+      --accent:      #4A8FD4;
+      --accent-soft: #EBF3FC;
+      --white:       #FFFFFF;
+      --gray-bg:     #F4F6FA;
+      --gray-border: #DDE3EE;
+      --gray-text:   #5E6E8A;
+      --red:         #C0392B;
+      --red-soft:    #FDECEA;
+      --green:       #1A7A4A;
+      --green-soft:  #E6F7EF;
+      --amber:       #B7610A;
+      --amber-soft:  #FEF5E7;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--gray-bg);
+      color: var(--navy-dark);
+      min-height: 100vh;
+      font-size: 15px;
+    }
+
+    /* ── Header ──────────────────────────────────────────────────── */
+    header {
+      background: var(--navy);
+      color: var(--white);
+      padding: 0.9rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      box-shadow: 0 2px 12px rgba(0,0,0,.35);
+    }
+    .header-brand { display: flex; align-items: center; gap: 0.75rem; }
+    .header-brand svg { flex-shrink: 0; }
+    .header-brand h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: .3px; line-height: 1.2; }
+    .header-brand p  { font-size: 0.75rem; opacity: .65; margin-top: 1px; }
+    #btn-reset {
+      display: none;
+      align-items: center;
+      gap: .4rem;
+      padding: .45rem .9rem;
+      border: 1.5px solid rgba(255,255,255,.35);
+      border-radius: 7px;
+      background: transparent;
+      color: white;
+      font-size: .8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .2s, border-color .2s;
+      white-space: nowrap;
+    }
+    #btn-reset:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.6); }
+
+    /* ── Upload Screen ───────────────────────────────────────────── */
+    #upload-screen {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(100vh - 60px);
+      padding: 2rem 1rem;
+    }
+    .upload-card {
+      background: var(--white);
+      border-radius: 16px;
+      padding: 2.5rem 2rem;
+      max-width: 480px;
+      width: 100%;
+      box-shadow: 0 4px 24px rgba(27,42,74,.12);
+      text-align: center;
+    }
+    .upload-card .icon-wrap {
+      width: 72px; height: 72px;
+      background: var(--accent-soft);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 1.25rem;
+    }
+    .upload-card h2 { font-size: 1.35rem; color: var(--navy); margin-bottom: .4rem; }
+    .upload-card > p { color: var(--gray-text); font-size: .88rem; line-height: 1.55; margin-bottom: 1.75rem; }
+    .drop-zone {
+      border: 2px dashed var(--navy-light);
+      border-radius: 12px;
+      padding: 1.75rem 1.25rem;
+      margin-bottom: 1.25rem;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      background: var(--gray-bg);
+    }
+    .drop-zone:hover, .drop-zone.over {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+    .drop-zone p { color: var(--navy-light); font-size: .88rem; line-height: 1.6; }
+    .drop-zone strong { font-size: 1.05rem; color: var(--navy); }
+    #file-input { display: none; }
+    .btn {
+      display: inline-flex; align-items: center; gap: .45rem;
+      padding: .65rem 1.4rem;
+      border: none; border-radius: 8px;
+      font-size: .9rem; font-weight: 600;
+      cursor: pointer;
+      transition: transform .15s, box-shadow .15s, background .15s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn-primary { background: var(--navy); color: white; }
+    .btn-primary:hover { background: var(--navy-light); box-shadow: 0 4px 12px rgba(27,42,74,.3); }
+    .btn-accent  { background: var(--accent); color: white; }
+    .btn-accent:hover  { background: #3a7ec0; box-shadow: 0 4px 12px rgba(74,143,212,.35); }
+    .btn-ghost {
+      background: transparent;
+      border: 1.5px solid var(--navy);
+      color: var(--navy);
+    }
+    .btn-ghost:hover { background: var(--navy); color: white; }
+    .upload-btn-row { margin-bottom: 1.5rem; }
+    .col-list {
+      text-align: left;
+      background: var(--accent-soft);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+    }
+    .col-list h4 {
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      color: var(--navy-light);
+      margin-bottom: .6rem;
+    }
+    .col-list ul { list-style: none; display: flex; flex-direction: column; gap: .3rem; }
+    .col-list li { font-size: .82rem; color: var(--gray-text); display: flex; align-items: center; gap: .4rem; }
+    .col-list li::before {
+      content: '';
+      width: 7px; height: 7px;
+      background: var(--accent);
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── Dashboard ───────────────────────────────────────────────── */
+    #dashboard { display: none; padding: 1.5rem; max-width: 1100px; margin: 0 auto; }
+
+    .dash-meta {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .dash-meta h2 { font-size: 1.15rem; color: var(--navy); }
+    .dash-meta p  { font-size: .8rem; color: var(--gray-text); margin-top: 2px; }
+    .jump-nav {
+      display: flex; flex-wrap: wrap; gap: .4rem;
+    }
+    .jump-btn {
+      padding: .38rem .85rem;
+      border: 1.5px solid var(--navy);
+      border-radius: 20px;
+      font-size: .78rem;
+      font-weight: 600;
+      color: var(--navy);
+      background: white;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+    }
+    .jump-btn:hover { background: var(--navy); color: white; }
+    .jump-btn.export { border-color: var(--accent); color: var(--accent); }
+    .jump-btn.export:hover { background: var(--accent); color: white; }
+
+    /* Stat cards */
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .stat-card {
+      background: white;
+      border-radius: 12px;
+      padding: 1.15rem 1rem;
+      text-align: center;
+      box-shadow: 0 1px 6px rgba(27,42,74,.08);
+      border-top: 3px solid var(--accent);
+    }
+    .stat-card.alert-card { border-top-color: var(--red); }
+    .stat-num  { font-size: 2rem; font-weight: 800; color: var(--navy); line-height: 1; }
+    .stat-card.alert-card .stat-num { color: var(--red); }
+    .stat-lbl  { font-size: .72rem; text-transform: uppercase; letter-spacing: .6px; color: var(--gray-text); margin-top: .35rem; }
+
+    /* Section cards */
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 1px 6px rgba(27,42,74,.08);
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: .6rem;
+      margin-bottom: 1.25rem;
+      padding-bottom: .85rem;
+      border-bottom: 2px solid var(--gray-border);
+    }
+    .card-title { display: flex; align-items: center; gap: .65rem; }
+    .section-num {
+      width: 26px; height: 26px;
+      background: var(--navy);
+      color: white;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .72rem;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+    .card-title h3 { font-size: 1rem; color: var(--navy); }
+    .card-hint { font-size: .78rem; color: var(--gray-text); }
+
+    /* Table */
+    .tbl-wrap { overflow-x: auto; border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; font-size: .875rem; min-width: 520px; }
+    thead tr { background: var(--navy); }
+    th {
+      color: white;
+      padding: .65rem 1rem;
+      text-align: left;
+      font-size: .73rem;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      font-weight: 700;
+    }
+    th:first-child { border-radius: 8px 0 0 0; }
+    th:last-child  { border-radius: 0 8px 0 0; }
+    td { padding: .65rem 1rem; border-bottom: 1px solid var(--gray-border); }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:nth-child(even) td { background: var(--gray-bg); }
+    tbody tr.row-alert td { background: var(--red-soft) !important; }
+    tbody tr.row-alert td:first-child { font-weight: 700; color: var(--red); }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: .25rem;
+      font-size: .72rem; font-weight: 700;
+      padding: .2rem .55rem;
+      border-radius: 20px;
+    }
+    .badge-red   { background: var(--red);   color: white; }
+    .badge-green { background: var(--green); color: white; }
+
+    .dot {
+      display: inline-block;
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      margin-right: .3rem;
+      vertical-align: middle;
+    }
+    .dot-green { background: var(--green); }
+    .dot-amber { background: #E8A020; }
+    .dot-red   { background: var(--red); }
+
+    /* Bar chart */
+    .chart-wrap { display: flex; flex-direction: column; gap: .7rem; }
+    .bar-row {
+      display: grid;
+      grid-template-columns: 210px 1fr 44px;
+      align-items: center;
+      gap: .75rem;
+    }
+    .bar-label {
+      font-size: .82rem;
+      color: var(--navy);
+      font-weight: 500;
+      text-align: right;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .bar-track {
+      background: var(--gray-border);
+      border-radius: 4px;
+      height: 26px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      width: 0;
+      background: linear-gradient(90deg, var(--navy) 0%, var(--accent) 100%);
+      border-radius: 4px;
+      transition: width .7s cubic-bezier(.4,0,.2,1);
+    }
+    .bar-count { font-size: .82rem; font-weight: 700; color: var(--navy); text-align: right; }
+
+    /* Follow-up cards */
+    .followup-list { display: flex; flex-direction: column; gap: .75rem; }
+    .fu-card {
+      border: 1px solid var(--gray-border);
+      border-left: 4px solid var(--amber);
+      border-radius: 8px;
+      padding: 1rem 1.15rem;
+      background: var(--amber-soft);
+    }
+    .fu-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: .5rem;
+      margin-bottom: .5rem;
+    }
+    .fu-teacher { font-weight: 700; color: var(--navy); font-size: .97rem; }
+    .fu-tags    { display: flex; flex-wrap: wrap; gap: .4rem; }
+    .tag {
+      display: inline-block;
+      background: white;
+      border: 1px solid var(--gray-border);
+      color: var(--gray-text);
+      font-size: .74rem;
+      padding: .18rem .55rem;
+      border-radius: 20px;
+    }
+    .fu-notes {
+      font-size: .84rem;
+      color: var(--navy-dark);
+      line-height: 1.55;
+      font-style: italic;
+      border-top: 1px solid rgba(0,0,0,.07);
+      padding-top: .5rem;
+      margin-top: .35rem;
+    }
+
+    /* Summary */
+    .summary-pre {
+      background: var(--navy-dark);
+      color: #D4DDED;
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: .78rem;
+      line-height: 1.75;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 420px;
+      overflow-y: auto;
+    }
+    .summary-pre::-webkit-scrollbar { width: 6px; }
+    .summary-pre::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 3px; }
+    .export-row { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1rem; }
+
+    /* Filter */
+    .filter-select {
+      padding: .42rem .75rem;
+      border: 1.5px solid var(--gray-border);
+      border-radius: 7px;
+      font-size: .83rem;
+      color: var(--navy);
+      background: white;
+      cursor: pointer;
+    }
+    .filter-select:focus { outline: none; border-color: var(--accent); }
+
+    /* Legend */
+    .legend { display: flex; align-items: center; gap: .9rem; font-size: .78rem; color: var(--gray-text); flex-wrap: wrap; }
+    .legend span { display: flex; align-items: center; gap: .3rem; }
+
+    /* Empty state */
+    .empty {
+      text-align: center;
+      padding: 2.5rem 1rem;
+      color: var(--gray-text);
+    }
+    .empty-icon { font-size: 2.5rem; margin-bottom: .75rem; }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 1.5rem; right: 1.5rem;
+      background: var(--navy);
+      color: white;
+      padding: .7rem 1.1rem;
+      border-radius: 8px;
+      font-size: .88rem;
+      font-weight: 600;
+      box-shadow: 0 4px 16px rgba(0,0,0,.25);
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity .25s, transform .25s;
+      pointer-events: none;
+      z-index: 999;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    /* Responsive tweaks */
+    @media (max-width: 640px) {
+      header { padding: .7rem 1rem; }
+      #dashboard { padding: 1rem; }
+      .card { padding: 1rem; }
+      .bar-row { grid-template-columns: 110px 1fr 36px; }
+      .bar-label { font-size: .74rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════ HEADER ═══════════════════ -->
+<header>
+  <div class="header-brand">
+    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect width="32" height="32" rx="8" fill="rgba(255,255,255,0.12)"/>
+      <rect x="7" y="8" width="18" height="2.5" rx="1.25" fill="white"/>
+      <rect x="7" y="13" width="14" height="2.5" rx="1.25" fill="rgba(255,255,255,0.7)"/>
+      <rect x="7" y="18" width="10" height="2.5" rx="1.25" fill="rgba(255,255,255,0.5)"/>
+      <circle cx="24" cy="22" r="5" fill="#4A8FD4"/>
+      <path d="M21.5 22l1.7 1.7 3-3" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div>
+      <h1>Walkthrough Data Aggregator</h1>
+      <p>School Observation Dashboard</p>
+    </div>
+  </div>
+  <button id="btn-reset" onclick="resetApp()">&#8617; New Upload</button>
+</header>
+
+<!-- ═══════════════════ UPLOAD SCREEN ═══════════════════ -->
+<section id="upload-screen">
+  <div class="upload-card">
+    <div class="icon-wrap">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M18 4v18m0-18l-5 5m5-5l5 5" stroke="#4A8FD4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M6 26c0 2.21 1.79 4 4 4h16c2.21 0 4-1.79 4-4" stroke="#4A8FD4" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <h2>Upload Walkthrough Data</h2>
+    <p>Upload your CSV file exported from Google Sheets to instantly generate a principal dashboard with visit frequency, look-for trends, and follow-up tracking.</p>
+
+    <div class="drop-zone" id="drop-zone" role="button" tabindex="0"
+         aria-label="Click or drag a CSV file here"
+         onclick="document.getElementById('file-input').click()"
+         onkeydown="if(event.key==='Enter'||event.key===' ')document.getElementById('file-input').click()">
+      <strong>📁 Drag &amp; drop your CSV here</strong>
+      <p>or click to browse files</p>
+    </div>
+    <input type="file" id="file-input" accept=".csv">
+
+    <div class="upload-btn-row">
+      <button class="btn btn-primary" style="width:100%" onclick="document.getElementById('file-input').click()">
+        Choose CSV File
+      </button>
+    </div>
+
+    <div class="col-list">
+      <h4>Expected CSV Columns</h4>
+      <ul>
+        <li>Teacher Name</li>
+        <li>Date of Visit</li>
+        <li>Subject / Class</li>
+        <li>Look-For Indicators (comma-separated values OK)</li>
+        <li>Open-Ended Feedback / Notes</li>
+        <li>Follow-Up Needed (Yes / No)</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ DASHBOARD ═══════════════════ -->
+<main id="dashboard" aria-label="Walkthrough Dashboard">
+
+  <!-- Meta row -->
+  <div class="dash-meta">
+    <div>
+      <h2 id="dash-title">Walkthrough Dashboard</h2>
+      <p id="dash-sub"></p>
+    </div>
+    <nav class="jump-nav" aria-label="Jump to section">
+      <button class="jump-btn" onclick="jumpTo('sec-visits')">Visit Frequency</button>
+      <button class="jump-btn" onclick="jumpTo('sec-trends')">Look-For Trends</button>
+      <button class="jump-btn" onclick="jumpTo('sec-followup')">Follow-Ups</button>
+      <button class="jump-btn export" onclick="jumpTo('sec-summary')">&#9654; Export Summary</button>
+    </nav>
+  </div>
+
+  <!-- Stat strip -->
+  <div class="stat-row" id="stat-row"></div>
+
+  <!-- ── SECTION 1: Visit Frequency ── -->
+  <section class="card" id="sec-visits">
+    <div class="card-header">
+      <div class="card-title">
+        <div class="section-num">1</div>
+        <h3>Visit Frequency</h3>
+      </div>
+      <div class="legend">
+        <span><i class="dot dot-green"></i>Visited within 30 days</span>
+        <span><i class="dot dot-red"></i>Overdue (30+ days or never)</span>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Teacher</th>
+            <th>Total Visits</th>
+            <th>Most Recent Visit</th>
+            <th>Days Since Visit</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="visit-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── SECTION 2: Look-For Trends ── -->
+  <section class="card" id="sec-trends">
+    <div class="card-header">
+      <div class="card-title">
+        <div class="section-num">2</div>
+        <h3>Look-For Trends</h3>
+      </div>
+      <span class="card-hint" id="indicator-label"></span>
+    </div>
+    <div class="chart-wrap" id="trend-chart"></div>
+  </section>
+
+  <!-- ── SECTION 3: Follow-Up Tracker ── -->
+  <section class="card" id="sec-followup">
+    <div class="card-header">
+      <div class="card-title">
+        <div class="section-num">3</div>
+        <h3>Follow-Up Tracker</h3>
+      </div>
+      <select class="filter-select" id="fu-filter" onchange="renderFollowUps()" aria-label="Filter by teacher">
+        <option value="">All Teachers</option>
+      </select>
+    </div>
+    <div class="followup-list" id="followup-list"></div>
+  </section>
+
+  <!-- ── SECTION 4: Exportable Summary ── -->
+  <section class="card" id="sec-summary">
+    <div class="card-header">
+      <div class="card-title">
+        <div class="section-num">4</div>
+        <h3>Exportable Summary</h3>
+      </div>
+      <span class="card-hint">Copy or download as plain text</span>
+    </div>
+    <pre class="summary-pre" id="summary-text" aria-label="Summary text"></pre>
+    <div class="export-row">
+      <button class="btn btn-primary" onclick="copySummary()">&#128203; Copy to Clipboard</button>
+      <button class="btn btn-ghost"   onclick="downloadSummary()">&#8659; Download .txt</button>
+    </div>
+  </section>
+
+</main>
+
+<!-- Toast -->
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- ═══════════════════ JAVASCRIPT ═══════════════════ -->
+<script>
+'use strict';
+
+// ── State ─────────────────────────────────────────────────────────────────
+let DATA = [];
+let COL  = {};
+const TODAY = (() => { const d = new Date(); d.setHours(0,0,0,0); return d; })();
+
+// ── CSV Parser ────────────────────────────────────────────────────────────
+function parseLine(line) {
+  const out = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+      else inQ = !inQ;
+    } else if (c === ',' && !inQ) {
+      out.push(cur.trim()); cur = '';
+    } else { cur += c; }
+  }
+  out.push(cur.trim());
+  return out;
+}
+
+function parseCSV(raw) {
+  const lines = raw.split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const headers = parseLine(lines[0]).map(h => h.replace(/^"|"$/g, '').trim());
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const vals = parseLine(lines[i]);
+    const row = {};
+    headers.forEach((h, idx) => { row[h] = (vals[idx] || '').replace(/^"|"$/g, '').trim(); });
+    rows.push(row);
+  }
+  return rows;
+}
+
+// ── Column Mapping ────────────────────────────────────────────────────────
+function findCol(headers, terms) {
+  for (const t of terms) {
+    const m = headers.find(h => h.toLowerCase().includes(t.toLowerCase()));
+    if (m) return m;
+  }
+  return null;
+}
+
+function mapCols(rows) {
+  if (!rows.length) return false;
+  const headers = Object.keys(rows[0]);
+  COL.teacher   = findCol(headers, ['teacher name', 'teacher']);
+  COL.date      = findCol(headers, ['date of visit', 'date']);
+  COL.subject   = findCol(headers, ['subject / class', 'subject', 'class']);
+  COL.indicators= findCol(headers, ['look-for', 'look for', 'indicators']);
+  COL.notes     = findCol(headers, ['open-ended', 'feedback', 'notes']);
+  COL.followup  = findCol(headers, ['follow-up needed', 'follow up', 'followup', 'follow-up']);
+  return !!(COL.teacher && COL.date);
+}
+
+// ── Date Utilities ────────────────────────────────────────────────────────
+function parseDate(str) {
+  if (!str) return null;
+  // Native parse (handles ISO, long-form, etc.)
+  let d = new Date(str);
+  if (!isNaN(d)) { d.setHours(0,0,0,0); return d; }
+  // M/D/YYYY or D-M-YYYY style
+  const m = str.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
+  if (m) {
+    const yr = m[3].length === 2 ? 2000 + +m[3] : +m[3];
+    d = new Date(yr, +m[1]-1, +m[2]);
+    if (!isNaN(d)) { d.setHours(0,0,0,0); return d; }
+  }
+  return null;
+}
+
+function fmtDate(d) {
+  if (!d) return 'N/A';
+  return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+}
+
+function daysSince(d) {
+  if (!d) return Infinity;
+  return Math.max(0, Math.floor((TODAY - d) / 86400000));
+}
+
+// ── File Handling ─────────────────────────────────────────────────────────
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
+dropZone.addEventListener('dragleave', ()=> dropZone.classList.remove('over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('over');
+  const f = e.dataTransfer.files[0];
+  if (f && f.name.toLowerCase().endsWith('.csv')) loadFile(f);
+  else toast('Please drop a .csv file.');
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const rows = parseCSV(ev.target.result);
+      if (!rows.length) { toast('The file appears to be empty.'); return; }
+      if (!mapCols(rows)) {
+        toast('Could not find required columns. Check your CSV headers.');
+        return;
+      }
+      DATA = rows;
+      buildDashboard(file.name);
+    } catch(e) { toast('Error reading file. Please try again.'); console.error(e); }
+  };
+  reader.readAsText(file);
+}
+
+// ── Dashboard Builder ─────────────────────────────────────────────────────
+function buildDashboard(filename) {
+  document.getElementById('upload-screen').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  document.getElementById('btn-reset').style.display = 'flex';
+
+  document.getElementById('dash-sub').textContent =
+    `Source: ${filename}  ·  ${DATA.length} observation${DATA.length !== 1 ? 's' : ''}  ·  Generated ${fmtDate(TODAY)}`;
+
+  renderStats();
+  renderVisits();
+  renderTrends();
+  populateFollowupFilter();
+  renderFollowUps();
+  renderSummary();
+}
+
+// ── Stat Strip ────────────────────────────────────────────────────────────
+function renderStats() {
+  const teacherSet = new Set(DATA.map(r => r[COL.teacher]).filter(Boolean));
+  const fuCount    = DATA.filter(r => isYes(r[COL.followup])).length;
+  const alertCount = teacherStats().filter(t => t.daysSince > 30).length;
+
+  document.getElementById('stat-row').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-num">${DATA.length}</div>
+      <div class="stat-lbl">Total Observations</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">${teacherSet.size}</div>
+      <div class="stat-lbl">Teachers Observed</div>
+    </div>
+    <div class="stat-card ${alertCount > 0 ? 'alert-card' : ''}">
+      <div class="stat-num">${alertCount}</div>
+      <div class="stat-lbl">Need Visit (30+ Days)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">${fuCount}</div>
+      <div class="stat-lbl">Follow-Ups Needed</div>
+    </div>`;
+}
+
+// ── Visit Frequency ───────────────────────────────────────────────────────
+function teacherStats() {
+  const map = {};
+  DATA.forEach(row => {
+    const name = (row[COL.teacher] || '').trim();
+    if (!name) return;
+    const d = parseDate(row[COL.date]);
+    if (!map[name]) map[name] = { count: 0, last: null };
+    map[name].count++;
+    if (d && (!map[name].last || d > map[name].last)) map[name].last = d;
+  });
+  return Object.entries(map).map(([name, s]) => ({
+    name,
+    count: s.count,
+    last: s.last,
+    daysSince: daysSince(s.last),
+  })).sort((a, b) => b.count - a.count);
+}
+
+function renderVisits() {
+  const stats = teacherStats();
+  document.getElementById('visit-tbody').innerHTML = stats.map(t => {
+    const over = t.daysSince > 30;
+    const dot  = `<i class="dot ${over ? 'dot-red' : 'dot-green'}"></i>`;
+    const badge = over
+      ? '<span class="badge badge-red">&#9888; Overdue</span>'
+      : '<span class="badge badge-green">&#10003; Current</span>';
+    const ds = t.daysSince === Infinity ? 'Never visited' : `${t.daysSince}`;
+    const dsSuffix = t.daysSince === Infinity ? '' : ' days';
+    return `<tr class="${over ? 'row-alert' : ''}">
+      <td>${esc(t.name)}</td>
+      <td>${t.count}</td>
+      <td>${fmtDate(t.last)}</td>
+      <td>${ds}${dsSuffix}</td>
+      <td>${dot}${badge}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Look-For Trends ───────────────────────────────────────────────────────
+function renderTrends() {
+  const counts = {};
+  DATA.forEach(row => {
+    (row[COL.indicators] || '').split(',').forEach(ind => {
+      const t = ind.trim();
+      if (t) counts[t] = (counts[t] || 0) + 1;
+    });
+  });
+  const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]);
+  const max = sorted.length ? sorted[0][1] : 1;
+
+  document.getElementById('indicator-label').textContent =
+    `${sorted.length} unique indicator${sorted.length !== 1 ? 's' : ''}`;
+
+  const container = document.getElementById('trend-chart');
+  if (!sorted.length) {
+    container.innerHTML = `<div class="empty"><div class="empty-icon">&#128241;</div><p>No Look-For Indicators found in the data.</p></div>`;
+    return;
+  }
+  container.innerHTML = sorted.map(([label, count]) => {
+    const pct = Math.round((count / max) * 100);
+    return `<div class="bar-row">
+      <div class="bar-label" title="${esc(label)}">${esc(label)}</div>
+      <div class="bar-track"><div class="bar-fill" data-w="${pct}"></div></div>
+      <div class="bar-count">${count}</div>
+    </div>`;
+  }).join('');
+
+  // Animate bars after paint
+  requestAnimationFrame(() => setTimeout(() => {
+    container.querySelectorAll('.bar-fill').forEach(el => {
+      el.style.width = el.dataset.w + '%';
+    });
+  }, 40));
+}
+
+// ── Follow-Up Tracker ─────────────────────────────────────────────────────
+function isYes(val) {
+  return /^y/i.test((val || '').trim());
+}
+
+function populateFollowupFilter() {
+  const sel  = document.getElementById('fu-filter');
+  const fuRows = DATA.filter(r => isYes(r[COL.followup]));
+  const teachers = [...new Set(fuRows.map(r => r[COL.teacher]).filter(Boolean))].sort();
+  teachers.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t; opt.textContent = t;
+    sel.appendChild(opt);
+  });
+}
+
+function renderFollowUps() {
+  const filter = document.getElementById('fu-filter').value;
+  let rows = DATA.filter(r => isYes(r[COL.followup]));
+  if (filter) rows = rows.filter(r => r[COL.teacher] === filter);
+
+  rows.sort((a,b) => {
+    const da = parseDate(a[COL.date]), db = parseDate(b[COL.date]);
+    if (!da && !db) return 0;
+    if (!da) return 1; if (!db) return -1;
+    return db - da;
+  });
+
+  const container = document.getElementById('followup-list');
+  if (!rows.length) {
+    container.innerHTML = `<div class="empty">
+      <div class="empty-icon">${filter ? '&#128269;' : '&#127881;'}</div>
+      <p>${filter ? 'No follow-ups for this teacher.' : 'No follow-ups needed — great work!'}</p>
+    </div>`;
+    return;
+  }
+
+  container.innerHTML = rows.map(r => {
+    const d = parseDate(r[COL.date]);
+    const notes = (r[COL.notes] || '').trim();
+    return `<div class="fu-card">
+      <div class="fu-top">
+        <div class="fu-teacher">${esc(r[COL.teacher] || 'Unknown')}</div>
+        <div class="fu-tags">
+          <span class="tag">&#128197; ${fmtDate(d)}</span>
+          ${r[COL.subject] ? `<span class="tag">&#128218; ${esc(r[COL.subject])}</span>` : ''}
+        </div>
+      </div>
+      ${notes ? `<div class="fu-notes">"${esc(notes)}"</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ── Summary ───────────────────────────────────────────────────────────────
+function buildSummaryText() {
+  const stats  = teacherStats();
+  const alerts = stats.filter(t => t.daysSince > 30);
+  const fuRows = DATA.filter(r => isYes(r[COL.followup]));
+  const teacherSet = new Set(DATA.map(r => r[COL.teacher]).filter(Boolean));
+
+  // Indicators
+  const counts = {};
+  DATA.forEach(row => {
+    (row[COL.indicators] || '').split(',').forEach(ind => {
+      const t = ind.trim();
+      if (t) counts[t] = (counts[t] || 0) + 1;
+    });
+  });
+  const topInd = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0, 5);
+
+  const line = '─'.repeat(62);
+  const dateStr = TODAY.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric', year:'numeric'});
+
+  let s = '';
+  s += `WALKTHROUGH DATA SUMMARY\n`;
+  s += `Generated: ${dateStr}\n`;
+  s += `${line}\n\n`;
+
+  s += `OVERVIEW\n`;
+  s += `  Total Observations ........... ${DATA.length}\n`;
+  s += `  Teachers Observed ............. ${teacherSet.size}\n`;
+  s += `  Teachers Needing Visit ........ ${alerts.length}\n`;
+  s += `  Follow-Ups Needed ............. ${fuRows.length}\n\n`;
+
+  s += `${line}\n`;
+  s += `VISIT FREQUENCY — ALL TEACHERS\n\n`;
+  stats.forEach(t => {
+    const flag = t.daysSince > 30 ? '  ⚠ NEEDS VISIT' : '';
+    const ds   = t.daysSince === Infinity ? 'Never' : `${t.daysSince}d ago`;
+    const name = t.name.length > 28 ? t.name.slice(0, 27) + '…' : t.name;
+    s += `  ${name.padEnd(30)} ${String(t.count).padStart(3)} visit(s)   Last: ${fmtDate(t.last)}${flag}\n`;
+  });
+  s += '\n';
+
+  if (alerts.length) {
+    s += `${line}\n`;
+    s += `TEACHERS REQUIRING IMMEDIATE ATTENTION (30+ DAYS)\n\n`;
+    alerts.forEach(t => {
+      const when = t.daysSince === Infinity ? 'Never observed' : `${t.daysSince} days since last visit`;
+      s += `  • ${t.name} — ${when}\n`;
+    });
+    s += '\n';
+  }
+
+  s += `${line}\n`;
+  s += `TOP LOOK-FOR INDICATORS\n\n`;
+  if (topInd.length) {
+    topInd.forEach(([ind, cnt], i) => {
+      s += `  ${i+1}. ${ind} (${cnt} observation${cnt !== 1 ? 's' : ''})\n`;
+    });
+  } else {
+    s += `  No indicators recorded.\n`;
+  }
+  s += '\n';
+
+  s += `${line}\n`;
+  s += `FOLLOW-UP ITEMS (${fuRows.length} total)\n\n`;
+  if (fuRows.length) {
+    [...fuRows].sort((a,b) => {
+      const da = parseDate(a[COL.date]), db = parseDate(b[COL.date]);
+      return (!da||!db) ? 0 : db-da;
+    }).forEach(r => {
+      s += `  • ${(r[COL.teacher]||'Unknown')} | ${fmtDate(parseDate(r[COL.date]))} | ${r[COL.subject]||'N/A'}\n`;
+      if ((r[COL.notes]||'').trim()) s += `    Notes: ${r[COL.notes].trim()}\n`;
+    });
+  } else {
+    s += `  No follow-ups required.\n`;
+  }
+  s += `\n${line}\n`;
+  s += `End of Report\n`;
+  return s;
+}
+
+function renderSummary() {
+  document.getElementById('summary-text').textContent = buildSummaryText();
+}
+
+function copySummary() {
+  const text = document.getElementById('summary-text').textContent;
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).then(() => toast('✓ Copied to clipboard!'));
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    toast('✓ Copied to clipboard!');
+  }
+}
+
+function downloadSummary() {
+  const text = document.getElementById('summary-text').textContent;
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `walkthrough-summary-${TODAY.toISOString().slice(0,10)}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('⬇ Downloading summary…');
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────
+function jumpTo(id) {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function resetApp() {
+  DATA = []; COL = {};
+  document.getElementById('upload-screen').style.display = 'flex';
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('btn-reset').style.display = 'none';
+  document.getElementById('file-input').value = '';
+  // Reset follow-up filter
+  const sel = document.getElementById('fu-filter');
+  while (sel.options.length > 1) sel.remove(1);
+}
+
+function esc(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
