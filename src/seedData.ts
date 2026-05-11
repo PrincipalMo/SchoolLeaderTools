@@ -1,6 +1,7 @@
 import { supabase, ColorCategory } from './supabase'
 
-const WEEK_START = '2026-05-04'
+// The one week that has sample data pre-loaded
+export const SEED_WEEK = '2026-05-04'
 
 export const TIME_SLOTS = [
   '7:00 - 7:30',
@@ -126,11 +127,12 @@ const priorities = [
   { title: 'Parent Contact', status: '', sort_order: 7 },
 ]
 
+// Seeds sample data for the May 4 week only — called once per user
 export async function seedWeekData(userId: string) {
   const { data: existing } = await supabase
     .from('calendar_events')
     .select('id')
-    .eq('week_start', WEEK_START)
+    .eq('week_start', SEED_WEEK)
     .eq('user_id', userId)
     .limit(1)
 
@@ -143,7 +145,7 @@ export async function seedWeekData(userId: string) {
       const slotIdx = parseInt(slotStr)
       events.push({
         user_id: userId,
-        week_start: WEEK_START,
+        week_start: SEED_WEEK,
         day_of_week: day,
         time_slot: TIME_SLOTS[slotIdx],
         title: entry.title,
@@ -157,17 +159,17 @@ export async function seedWeekData(userId: string) {
   const { data: existingPriorities } = await supabase
     .from('weekly_priorities')
     .select('id')
-    .eq('week_start', WEEK_START)
+    .eq('week_start', SEED_WEEK)
     .eq('user_id', userId)
     .limit(1)
 
   if (!existingPriorities || existingPriorities.length === 0) {
     await supabase.from('weekly_priorities').insert(
-      priorities.map((p) => ({ ...p, user_id: userId, week_start: WEEK_START }))
+      priorities.map((p) => ({ ...p, user_id: userId, week_start: SEED_WEEK }))
     )
   }
 
-  // Seed default leaders
+  // Seed default leaders (once per user, not per week)
   const { data: existingLeaders } = await supabase
     .from('leaders')
     .select('id')
@@ -182,5 +184,3 @@ export async function seedWeekData(userId: string) {
     ])
   }
 }
-
-export { WEEK_START }

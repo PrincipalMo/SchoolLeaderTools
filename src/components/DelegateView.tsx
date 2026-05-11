@@ -1,10 +1,14 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase, CalendarEvent, WeeklyPriority, DelegatedTask } from '../supabase'
-import { TIME_SLOTS } from '../seedData'
+import { addWeeks, formatWeekLabel, formatDayHeader, getWeekDays, currentWeekMonday } from '../utils/weekUtils'
 import styles from './DelegateView.module.css'
 
-const DAYS = ['Monday 5/4', 'Tuesday 5/5', 'Wednesday 5/6', 'Thursday 5/7', 'Friday 5/8']
-const DAY_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+const TIME_SLOTS = [
+  '7:00 - 7:30', '7:30 - 8:00', '8:00 - 8:30', '8:30 - 9:00', '9:00 - 9:30',
+  '9:30 - 10:00', '10:00 - 10:30', '10:30 - 11:00', '11:00 - 11:30', '11:30 - 12:00',
+  '12:00 - 12:30', '12:30 - 1:00', '1:00 - 1:30', '1:30 - 2:00', '2:00 - 2:30',
+  '2:30 - 3:00', '3:00 - 3:30', '3:30 - 4:00', '4:00 - 4:30', '4:30 - 5:00',
+]
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Pending',
@@ -60,11 +64,13 @@ interface Props {
 export default function DelegateView({ token }: Props) {
   const [tokenInfo, setTokenInfo] = useState<TokenInfo | null>(null)
   const [leader, setLeader] = useState<Leader | null>(null)
+  const [calWeekStart, setCalWeekStart] = useState<string>(currentWeekMonday())
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [priorities, setPriorities] = useState<WeeklyPriority[]>([])
   const [tasks, setTasks] = useState<DelegatedTask[]>([])
   const [comments, setComments] = useState<TaskComment[]>([])
   const [loading, setLoading] = useState(true)
+  const [calLoading, setCalLoading] = useState(false)
   const [invalid, setInvalid] = useState(false)
   const [activeView, setActiveView] = useState<'calendar' | 'tasks'>('tasks')
   const [expandedTask, setExpandedTask] = useState<string | null>(null)
@@ -75,7 +81,6 @@ export default function DelegateView({ token }: Props) {
 
   const load = useCallback(async () => {
     setLoading(true)
-    // Look up token
     const { data: tkData, error: tkErr } = await supabase
       .from('delegate_tokens')
       .select('id, leader_id, owner_user_id')
@@ -93,8 +98,8 @@ export default function DelegateView({ token }: Props) {
 
     const [leaderRes, evRes, prRes, taskRes, commentRes] = await Promise.all([
       supabase.from('leaders').select('*').eq('id', tk.leader_id).maybeSingle(),
-      supabase.from('calendar_events').select('*').eq('user_id', tk.owner_user_id).eq('week_start', '2026-05-04'),
-      supabase.from('weekly_priorities').select('*').eq('user_id', tk.owner_user_id).eq('week_start', '2026-05-04').order('sort_order'),
+      supabase.from('calendar_events').select('*').eq('user_id', tk.owner_user_id).eq('week_start', calWeekStart),
+      supabase.from('weekly_priorities').select('*').eq('user_id', tk.owner_user_id).eq('week_start', calWeekStart).order('sort_order'),
       supabase.from('delegated_tasks').select('*').eq('leader_id', tk.leader_id).order('created_at'),
       supabase.from('task_comments').select('*').eq('leader_id', tk.leader_id).order('created_at', { ascending: true }),
     ])
@@ -105,9 +110,27 @@ export default function DelegateView({ token }: Props) {
     if (taskRes.data) setTasks(taskRes.data as DelegatedTask[])
     if (commentRes.data) setComments(commentRes.data as TaskComment[])
     setLoading(false)
-  }, [token])
+  }, [token, calWeekStart])
+
+  // When week changes after initial load, only reload calendar data
+  const loadCalendarData = useCallback(async () => {
+    if (!tokenInfo) return
+    setCalLoading(true)
+    const [evRes, prRes] = await Promise.all([
+      supabase.from('calendar_events').select('*').eq('user_id', tokenInfo.owner_user_id).eq('week_start', calWeekStart),
+      supabase.from('weekly_priorities').select('*').eq('user_id', tokenInfo.owner_user_id).eq('week_start', calWeekStart).order('sort_order'),
+    ])
+    if (evRes.data) setEvents(evRes.data as CalendarEvent[])
+    if (prRes.data) setPriorities(prRes.data as WeeklyPriority[])
+    setCalLoading(false)
+  }, [tokenInfo, calWeekStart])
 
   useEffect(() => { load() }, [load])
+
+  // Re-fetch calendar data when week changes (after initial load)
+  useEffect(() => {
+    if (tokenInfo) loadCalendarData()
+  }, [calWeekStart]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function submitUpdate(task: DelegatedTask) {
     const comment = newComment[task.id] || ''
@@ -204,7 +227,7 @@ export default function DelegateView({ token }: Props) {
           <div className={styles.tasksView}>
             <div className={styles.tasksHeader}>
               <h2>Your Assigned Tasks</h2>
-              <p>Week of May 4–8, 2026 · Click a task to report progress or leave a comment.</p>
+              <p>Click a task to report progress or leave a comment.</p>
             </div>
 
             {tasks.length === 0 ? (
@@ -331,17 +354,32 @@ export default function DelegateView({ token }: Props) {
 
         {activeView === 'calendar' && (
           <div className={styles.calendarView}>
+            <div className={styles.calWeekNav}>
+              <button className={styles.calNavBtn} onClick={() => setCalWeekStart(w => addWeeks(w, -1))}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="15 18 9 12 15 6"/>
+                </svg>
+              </button>
+              <span className={styles.calWeekLabel}>{formatWeekLabel(calWeekStart)}</span>
+              <button className={styles.calNavBtn} onClick={() => setCalWeekStart(w => addWeeks(w, 1))}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+              </button>
+              {calWeekStart !== currentWeekMonday() && (
+                <button className={styles.calTodayBtn} onClick={() => setCalWeekStart(currentWeekMonday())}>Today</button>
+              )}
+            </div>
             <div className={styles.calendarLayout}>
               <div className={styles.calendarWrap}>
-                <p className={styles.readOnlyNote}>
-                  Read-only view — May 4–8, 2026
-                </p>
+                {calLoading && <div className={styles.calOverlay}><div className={styles.spinner} /></div>}
+                <p className={styles.readOnlyNote}>Read-only view</p>
                 <div className={styles.calendarHeader}>
                   <div className={styles.timeColHeader} />
-                  {DAYS.map((d, i) => (
+                  {getWeekDays(calWeekStart).map((d, i) => (
                     <div key={i} className={styles.dayHeader}>
-                      <span className={styles.dayFull}>{d}</span>
-                      <span className={styles.dayShort}>{DAY_SHORT[i]}</span>
+                      <span className={styles.dayFull}>{formatDayHeader(d)}</span>
+                      <span className={styles.dayShort}>{formatDayHeader(d, true)}</span>
                     </div>
                   ))}
                 </div>

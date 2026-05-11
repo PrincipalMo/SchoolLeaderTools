@@ -482,7 +482,61 @@
 .submitBtn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Calendar view */
-.calendarView { width: 100%; }
+.calendarView { width: 100%; display: flex; flex-direction: column; gap: 16px; }
+
+.calWeekNav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.calNavBtn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--gray-600);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.calNavBtn:hover { background: var(--gray-50); border-color: var(--gray-400); color: var(--gray-800); }
+
+.calWeekLabel {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--gray-800);
+  white-space: nowrap;
+}
+
+.calTodayBtn {
+  background: #fff;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary-600);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: var(--font);
+}
+.calTodayBtn:hover { background: var(--primary-50); border-color: var(--primary-300); }
+
+.calOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  border-radius: var(--radius-lg);
+}
 
 .calendarLayout {
   display: grid;
@@ -508,6 +562,7 @@
   box-shadow: var(--shadow);
   overflow: hidden;
   overflow-x: auto;
+  position: relative;
 }
 
 .calendarHeader {

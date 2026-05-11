@@ -75,7 +75,7 @@ export default function App() {
             <div className={styles.brandIcon}>W</div>
             <div>
               <h1 className={styles.title}>Week at a Glance</h1>
-              <p className={styles.subtitle}>May 4 – 8, 2026</p>
+              <p className={styles.subtitle}>Weekly Planning Dashboard</p>
             </div>
           </div>
 

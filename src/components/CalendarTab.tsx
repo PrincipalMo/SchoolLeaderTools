@@ -1,11 +1,16 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase, CalendarEvent, WeeklyPriority, ColorCategory, ICalFeed } from '../supabase'
-import { seedWeekData, WEEK_START, TIME_SLOTS } from '../seedData'
+import { seedWeekData, SEED_WEEK } from '../seedData'
+import { addWeeks, formatWeekLabel, formatDayHeader, getWeekDays, currentWeekMonday } from '../utils/weekUtils'
 import CalendarImport from './CalendarImport'
 import styles from './CalendarTab.module.css'
 
-const DAYS = ['Monday 5/4', 'Tuesday 5/5', 'Wednesday 5/6', 'Thursday 5/7', 'Friday 5/8']
-const DAY_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+const TIME_SLOTS = [
+  '7:00 - 7:30', '7:30 - 8:00', '8:00 - 8:30', '8:30 - 9:00', '9:00 - 9:30',
+  '9:30 - 10:00', '10:00 - 10:30', '10:30 - 11:00', '11:00 - 11:30', '11:30 - 12:00',
+  '12:00 - 12:30', '12:30 - 1:00', '1:00 - 1:30', '1:30 - 2:00', '2:00 - 2:30',
+  '2:30 - 3:00', '3:00 - 3:30', '3:30 - 4:00', '4:00 - 4:30', '4:30 - 5:00',
+]
 
 const CATEGORIES: { key: ColorCategory; label: string }[] = [
   { key: 'check-ins', label: 'Check-Ins' },
@@ -46,6 +51,7 @@ interface Props {
 }
 
 export default function CalendarTab({ userId }: Props) {
+  const [weekStart, setWeekStart] = useState<string>(currentWeekMonday())
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [priorities, setPriorities] = useState<WeeklyPriority[]>([])
   const [feeds, setFeeds] = useState<ICalFeed[]>([])
@@ -59,19 +65,24 @@ export default function CalendarTab({ userId }: Props) {
   const [saving, setSaving] = useState(false)
   const [showImport, setShowImport] = useState(false)
 
+  const weekDays = getWeekDays(weekStart)
+  const isCurrentWeek = weekStart === currentWeekMonday()
+  const isSeedWeek = weekStart === SEED_WEEK
+
   const load = useCallback(async () => {
     setLoading(true)
-    await seedWeekData(userId)
+    // Only seed sample data when on the seed week
+    if (isSeedWeek) await seedWeekData(userId)
     const [evRes, prRes, feedRes] = await Promise.all([
-      supabase.from('calendar_events').select('*').eq('week_start', WEEK_START).eq('user_id', userId),
-      supabase.from('weekly_priorities').select('*').eq('week_start', WEEK_START).eq('user_id', userId).order('sort_order'),
+      supabase.from('calendar_events').select('*').eq('week_start', weekStart).eq('user_id', userId),
+      supabase.from('weekly_priorities').select('*').eq('week_start', weekStart).eq('user_id', userId).order('sort_order'),
       supabase.from('ical_feeds').select('*').eq('user_id', userId).order('created_at'),
     ])
     if (evRes.data) setEvents(evRes.data as CalendarEvent[])
     if (prRes.data) setPriorities(prRes.data as WeeklyPriority[])
     if (feedRes.data) setFeeds(feedRes.data as ICalFeed[])
     setLoading(false)
-  }, [userId])
+  }, [userId, weekStart, isSeedWeek])
 
   useEffect(() => { load() }, [load])
 
@@ -92,14 +103,14 @@ export default function CalendarTab({ userId }: Props) {
     if (editModal.isNew && editTitle.trim()) {
       await supabase.from('calendar_events').insert({
         user_id: userId,
-        week_start: WEEK_START,
+        week_start: weekStart,
         day_of_week: editModal.day,
         time_slot: editModal.timeSlot,
         title: editTitle.trim(),
         color_category: editCategory,
         source: 'manual',
       })
-      await logAction('create', 'calendar_event', { title: editTitle.trim(), day: editModal.day, slot: editModal.timeSlot })
+      await logAction('create', 'calendar_event', { title: editTitle.trim(), week: weekStart })
     } else if (!editModal.isNew && editModal.event) {
       if (editTitle.trim()) {
         await supabase.from('calendar_events').update({
@@ -139,7 +150,7 @@ export default function CalendarTab({ userId }: Props) {
     if (!newPriorityText.trim()) return
     const { data } = await supabase.from('weekly_priorities').insert({
       user_id: userId,
-      week_start: WEEK_START,
+      week_start: weekStart,
       title: newPriorityText.trim(),
       status: '',
       sort_order: priorities.length,
@@ -153,17 +164,33 @@ export default function CalendarTab({ userId }: Props) {
     setPriorities(prev => prev.filter(p => p.id !== id))
   }
 
-  if (loading) return (
-    <div className={styles.loading}>
-      <div className={styles.spinner} />
-      <span>Loading calendar...</span>
-    </div>
-  )
+  function goToPrev() { setWeekStart(w => addWeeks(w, -1)) }
+  function goToNext() { setWeekStart(w => addWeeks(w, 1)) }
+  function goToToday() { setWeekStart(currentWeekMonday()) }
 
   return (
     <div className={styles.container}>
+      {/* Week navigation toolbar */}
       <div className={styles.toolbar}>
-        <span className={styles.weekLabel}>Week of May 4 – 8, 2026</span>
+        <div className={styles.weekNav}>
+          <button className={styles.navBtn} onClick={goToPrev} title="Previous week">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+          </button>
+          <div className={styles.weekLabelWrap}>
+            <span className={styles.weekLabel}>{formatWeekLabel(weekStart)}</span>
+            {isCurrentWeek && <span className={styles.currentBadge}>Current Week</span>}
+          </div>
+          <button className={styles.navBtn} onClick={goToNext} title="Next week">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </button>
+          {!isCurrentWeek && (
+            <button className={styles.todayBtn} onClick={goToToday}>Today</button>
+          )}
+        </div>
         <button className={styles.importBtn} onClick={() => setShowImport(true)}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -175,122 +202,132 @@ export default function CalendarTab({ userId }: Props) {
         </button>
       </div>
 
-      <div className={styles.layout}>
-        {/* Calendar grid */}
-        <div className={styles.calendarWrap}>
-          <div className={styles.calendarHeader}>
-            <div className={styles.timeColHeader} />
-            {DAYS.map((d, i) => (
-              <div key={i} className={styles.dayHeader}>
-                <span className={styles.dayFull}>{d}</span>
-                <span className={styles.dayShort}>{DAY_SHORT[i]}</span>
-              </div>
-            ))}
-          </div>
-          <div className={styles.calendarBody}>
-            {TIME_SLOTS.map((slot) => (
-              <div key={slot} className={styles.row}>
-                <div className={styles.timeCell}>{slot}</div>
-                {[0, 1, 2, 3, 4].map((day) => {
-                  const cellEvents = getEventsForCell(day, slot)
-                  return (
-                    <div
-                      key={day}
-                      className={`${styles.cell} ${cellEvents.length ? styles.cellFilled : styles.cellEmpty}`}
-                      onClick={() => openEditCell(day, slot)}
-                    >
-                      {cellEvents.map(ev => (
-                        <div
-                          key={ev.id}
-                          className={`${styles.eventChip} ${categoryClass(ev.color_category)} ${ev.source === 'imported' ? styles.chipImported : ''}`}
-                          title={ev.source === 'imported' ? `Imported from calendar` : undefined}
-                        >
-                          {ev.source === 'imported' && <span className={styles.importedDot} />}
-                          {ev.title}
-                        </div>
-                      ))}
-                    </div>
-                  )
-                })}
-              </div>
-            ))}
-          </div>
+      {loading ? (
+        <div className={styles.loading}>
+          <div className={styles.spinner} />
+          <span>Loading...</span>
         </div>
-
-        {/* Priorities sidebar */}
-        <aside className={styles.sidebar}>
-          <div className={styles.sidebarHeader}>
-            <h2 className={styles.sidebarTitle}>Priorities for Week</h2>
-          </div>
-          <ul className={styles.priorityList}>
-            {priorities.map((p) => (
-              <li key={p.id} className={styles.priorityItem}>
-                {priorityEdit === p.id ? (
-                  <div className={styles.priorityEditRow}>
-                    <input
-                      className={styles.priorityInput}
-                      value={priorityText}
-                      onChange={e => setPriorityText(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && savePriorityEdit(p)}
-                      autoFocus
-                    />
-                    <button className={styles.btnSm} onClick={() => savePriorityEdit(p)}>Save</button>
-                    <button className={`${styles.btnSm} ${styles.btnGhost}`} onClick={() => setPriorityEdit(null)}>✕</button>
-                  </div>
-                ) : (
-                  <div className={styles.priorityRow}>
-                    <button
-                      className={`${styles.statusBadge} ${p.status === 'IP' ? styles.statusIP : p.status === 'C' ? styles.statusC : styles.statusNone}`}
-                      onClick={() => togglePriorityStatus(p)}
-                      title="Click to cycle status"
-                    >
-                      {p.status || '—'}
-                    </button>
-                    <span
-                      className={styles.priorityText}
-                      onDoubleClick={() => { setPriorityEdit(p.id); setPriorityText(p.title) }}
-                    >
-                      {p.title}
-                    </span>
-                    <button className={styles.deleteBtn} onClick={() => deletePriority(p.id)} title="Delete">×</button>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-          <div className={styles.addPriority}>
-            <input
-              className={styles.addInput}
-              placeholder="Add priority..."
-              value={newPriorityText}
-              onChange={e => setNewPriorityText(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && addPriority()}
-            />
-            <button className={styles.addBtn} onClick={addPriority}>Add</button>
-          </div>
-
-          <div className={styles.legend}>
-            <p className={styles.legendTitle}>Color Legend</p>
-            <div className={styles.legendGrid}>
-              {CATEGORIES.map(c => (
-                <div key={c.key} className={styles.legendItem}>
-                  <span className={`${styles.legendDot} ${categoryClass(c.key)}`} />
-                  <span className={styles.legendLabel}>{c.label}</span>
+      ) : (
+        <div className={styles.layout}>
+          {/* Calendar grid */}
+          <div className={styles.calendarWrap}>
+            <div className={styles.calendarHeader}>
+              <div className={styles.timeColHeader} />
+              {weekDays.map((d, i) => (
+                <div key={i} className={styles.dayHeader}>
+                  <span className={styles.dayFull}>{formatDayHeader(d)}</span>
+                  <span className={styles.dayShort}>{formatDayHeader(d, true)}</span>
                 </div>
               ))}
-              <div className={styles.legendItem}>
-                <span className={`${styles.legendDot} ${styles.catNone}`} style={{ border: '1.5px dashed #9ca3af' }} />
-                <span className={styles.legendLabel}>Imported</span>
-              </div>
+            </div>
+            <div className={styles.calendarBody}>
+              {TIME_SLOTS.map((slot) => (
+                <div key={slot} className={styles.row}>
+                  <div className={styles.timeCell}>{slot}</div>
+                  {[0, 1, 2, 3, 4].map((day) => {
+                    const cellEvents = getEventsForCell(day, slot)
+                    return (
+                      <div
+                        key={day}
+                        className={`${styles.cell} ${cellEvents.length ? styles.cellFilled : styles.cellEmpty}`}
+                        onClick={() => openEditCell(day, slot)}
+                      >
+                        {cellEvents.map(ev => (
+                          <div
+                            key={ev.id}
+                            className={`${styles.eventChip} ${categoryClass(ev.color_category)} ${ev.source === 'imported' ? styles.chipImported : ''}`}
+                            title={ev.source === 'imported' ? 'Imported from calendar' : undefined}
+                          >
+                            {ev.source === 'imported' && <span className={styles.importedDot} />}
+                            {ev.title}
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })}
+                </div>
+              ))}
             </div>
           </div>
-        </aside>
-      </div>
+
+          {/* Priorities sidebar */}
+          <aside className={styles.sidebar}>
+            <div className={styles.sidebarHeader}>
+              <h2 className={styles.sidebarTitle}>Priorities for Week</h2>
+            </div>
+            <ul className={styles.priorityList}>
+              {priorities.map((p) => (
+                <li key={p.id} className={styles.priorityItem}>
+                  {priorityEdit === p.id ? (
+                    <div className={styles.priorityEditRow}>
+                      <input
+                        className={styles.priorityInput}
+                        value={priorityText}
+                        onChange={e => setPriorityText(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && savePriorityEdit(p)}
+                        autoFocus
+                      />
+                      <button className={styles.btnSm} onClick={() => savePriorityEdit(p)}>Save</button>
+                      <button className={`${styles.btnSm} ${styles.btnGhost}`} onClick={() => setPriorityEdit(null)}>✕</button>
+                    </div>
+                  ) : (
+                    <div className={styles.priorityRow}>
+                      <button
+                        className={`${styles.statusBadge} ${p.status === 'IP' ? styles.statusIP : p.status === 'C' ? styles.statusC : styles.statusNone}`}
+                        onClick={() => togglePriorityStatus(p)}
+                        title="Click to cycle status"
+                      >
+                        {p.status || '—'}
+                      </button>
+                      <span
+                        className={styles.priorityText}
+                        onDoubleClick={() => { setPriorityEdit(p.id); setPriorityText(p.title) }}
+                      >
+                        {p.title}
+                      </span>
+                      <button className={styles.deleteBtn} onClick={() => deletePriority(p.id)} title="Delete">×</button>
+                    </div>
+                  )}
+                </li>
+              ))}
+              {priorities.length === 0 && (
+                <li className={styles.emptyPriorities}>No priorities yet for this week.</li>
+              )}
+            </ul>
+            <div className={styles.addPriority}>
+              <input
+                className={styles.addInput}
+                placeholder="Add priority..."
+                value={newPriorityText}
+                onChange={e => setNewPriorityText(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addPriority()}
+              />
+              <button className={styles.addBtn} onClick={addPriority}>Add</button>
+            </div>
+
+            <div className={styles.legend}>
+              <p className={styles.legendTitle}>Color Legend</p>
+              <div className={styles.legendGrid}>
+                {CATEGORIES.map(c => (
+                  <div key={c.key} className={styles.legendItem}>
+                    <span className={`${styles.legendDot} ${categoryClass(c.key)}`} />
+                    <span className={styles.legendLabel}>{c.label}</span>
+                  </div>
+                ))}
+                <div className={styles.legendItem}>
+                  <span className={`${styles.legendDot} ${styles.catNone}`} style={{ border: '1.5px dashed #9ca3af' }} />
+                  <span className={styles.legendLabel}>Imported</span>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      )}
 
       {showImport && (
         <CalendarImport
           userId={userId}
-          weekStart={WEEK_START}
+          weekStart={weekStart}
           feeds={feeds}
           onFeedsChange={setFeeds}
           onImported={load}
@@ -307,7 +344,7 @@ export default function CalendarTab({ userId }: Props) {
             </div>
             <div className={styles.modalBody}>
               <p className={styles.modalMeta}>
-                {DAYS[editModal.day]} · {editModal.timeSlot}
+                {formatDayHeader(weekDays[editModal.day])} · {editModal.timeSlot}
               </p>
               <label className={styles.label}>Event title</label>
               <input
