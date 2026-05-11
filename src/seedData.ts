@@ -2,7 +2,7 @@ import { supabase, ColorCategory } from './supabase'
 
 const WEEK_START = '2026-05-04'
 
-const TIME_SLOTS = [
+export const TIME_SLOTS = [
   '7:00 - 7:30',
   '7:30 - 8:00',
   '8:00 - 8:30',
@@ -27,9 +27,7 @@ const TIME_SLOTS = [
 
 type EventEntry = { title: string; category: ColorCategory }
 
-// [day][slot_index] = { title, category }
 const calendarData: Record<number, Record<number, EventEntry>> = {
-  // Monday
   0: {
     1: { title: 'Morning Entry', category: 'admin' },
     2: { title: 'Rounds', category: 'admin' },
@@ -47,7 +45,6 @@ const calendarData: Record<number, Record<number, EventEntry>> = {
     16: { title: 'Interview', category: 'admin' },
     18: { title: 'Interview', category: 'admin' },
   },
-  // Tuesday
   1: {
     0: { title: '504/SST', category: 'admin' },
     1: { title: 'Morning Entry', category: 'admin' },
@@ -65,7 +62,6 @@ const calendarData: Record<number, Record<number, EventEntry>> = {
     16: { title: 'Interview', category: 'admin' },
     19: { title: 'School Family Community Council', category: 'family-engagement' },
   },
-  // Wednesday
   2: {
     0: { title: 'IEP', category: 'admin' },
     1: { title: 'Morning Entry', category: 'admin' },
@@ -84,7 +80,6 @@ const calendarData: Record<number, Record<number, EventEntry>> = {
     15: { title: 'Dismissal', category: 'supervision' },
     16: { title: 'MUSL Meeting', category: 'admin' },
   },
-  // Thursday
   3: {
     0: { title: 'CP/ Team', category: 'admin' },
     1: { title: 'Morning Entry', category: 'admin' },
@@ -102,7 +97,6 @@ const calendarData: Record<number, Record<number, EventEntry>> = {
     14: { title: '8th Grade', category: 'instruction' },
     15: { title: 'Dismissal', category: 'supervision' },
   },
-  // Friday
   4: {
     1: { title: 'Morning Entry', category: 'admin' },
     2: { title: 'Rounds', category: 'admin' },
@@ -132,50 +126,61 @@ const priorities = [
   { title: 'Parent Contact', status: '', sort_order: 7 },
 ]
 
-export async function seedWeekData() {
+export async function seedWeekData(userId: string) {
   const { data: existing } = await supabase
     .from('calendar_events')
     .select('id')
     .eq('week_start', WEEK_START)
+    .eq('user_id', userId)
     .limit(1)
 
   if (existing && existing.length > 0) return
 
-  const events: {
-    week_start: string
-    day_of_week: number
-    time_slot: string
-    title: string
-    color_category: string
-  }[] = []
-
+  const events: object[] = []
   for (const [dayStr, slots] of Object.entries(calendarData)) {
     const day = parseInt(dayStr)
     for (const [slotStr, entry] of Object.entries(slots)) {
       const slotIdx = parseInt(slotStr)
       events.push({
+        user_id: userId,
         week_start: WEEK_START,
         day_of_week: day,
         time_slot: TIME_SLOTS[slotIdx],
         title: entry.title,
         color_category: entry.category,
+        source: 'manual',
       })
     }
   }
-
   await supabase.from('calendar_events').insert(events)
 
   const { data: existingPriorities } = await supabase
     .from('weekly_priorities')
     .select('id')
     .eq('week_start', WEEK_START)
+    .eq('user_id', userId)
     .limit(1)
 
   if (!existingPriorities || existingPriorities.length === 0) {
     await supabase.from('weekly_priorities').insert(
-      priorities.map((p) => ({ ...p, week_start: WEEK_START }))
+      priorities.map((p) => ({ ...p, user_id: userId, week_start: WEEK_START }))
     )
+  }
+
+  // Seed default leaders
+  const { data: existingLeaders } = await supabase
+    .from('leaders')
+    .select('id')
+    .eq('user_id', userId)
+    .limit(1)
+
+  if (!existingLeaders || existingLeaders.length === 0) {
+    await supabase.from('leaders').insert([
+      { user_id: userId, name: 'Taylor', role: 'Team Leader' },
+      { user_id: userId, name: 'Umbel', role: 'Team Leader' },
+      { user_id: userId, name: 'SGA', role: 'Student Government Association' },
+    ])
   }
 }
 
-export { WEEK_START, TIME_SLOTS }
+export { WEEK_START }

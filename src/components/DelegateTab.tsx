@@ -26,7 +26,11 @@ const emptyForm = (leaderId = ''): TaskForm => ({
   status: 'pending',
 })
 
-export default function DelegateTab() {
+interface Props {
+  userId: string
+}
+
+export default function DelegateTab({ userId }: Props) {
   const [leaders, setLeaders] = useState<Leader[]>([])
   const [tasks, setTasks] = useState<DelegatedTask[]>([])
   const [loading, setLoading] = useState(true)
@@ -42,13 +46,13 @@ export default function DelegateTab() {
   const load = useCallback(async () => {
     setLoading(true)
     const [lRes, tRes] = await Promise.all([
-      supabase.from('leaders').select('*').order('name'),
-      supabase.from('delegated_tasks').select('*').order('created_at', { ascending: false }),
+      supabase.from('leaders').select('*').eq('user_id', userId).order('name'),
+      supabase.from('delegated_tasks').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
     ])
     if (lRes.data) setLeaders(lRes.data as Leader[])
     if (tRes.data) setTasks(tRes.data as DelegatedTask[])
     setLoading(false)
-  }, [])
+  }, [userId])
 
   useEffect(() => { load() }, [load])
 
@@ -56,6 +60,7 @@ export default function DelegateTab() {
     if (!taskForm.title.trim() || !taskForm.leaderId) return
     setSaving(true)
     const payload = {
+      user_id: userId,
       leader_id: taskForm.leaderId,
       title: taskForm.title.trim(),
       description: taskForm.description.trim(),
@@ -88,6 +93,7 @@ export default function DelegateTab() {
   async function addLeader() {
     if (!leaderName.trim()) return
     const { data } = await supabase.from('leaders').insert({
+      user_id: userId,
       name: leaderName.trim(),
       role: leaderRole.trim(),
     }).select().single()

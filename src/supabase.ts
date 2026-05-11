@@ -19,16 +19,22 @@ export type ColorCategory =
 
 export interface CalendarEvent {
   id: string
+  user_id: string
   week_start: string
   day_of_week: number
   time_slot: string
   title: string
   color_category: ColorCategory
+  source: 'manual' | 'imported'
+  external_uid: string | null
+  start_time: string | null
+  end_time: string | null
   created_at: string
 }
 
 export interface WeeklyPriority {
   id: string
+  user_id: string
   week_start: string
   title: string
   status: string
@@ -38,6 +44,7 @@ export interface WeeklyPriority {
 
 export interface Leader {
   id: string
+  user_id: string
   name: string
   role: string
   created_at: string
@@ -45,11 +52,31 @@ export interface Leader {
 
 export interface DelegatedTask {
   id: string
+  user_id: string
   leader_id: string
   title: string
   description: string
   due_date: string | null
   status: 'pending' | 'in_progress' | 'completed'
   week_start: string | null
+  created_at: string
+}
+
+export interface ICalFeed {
+  id: string
+  user_id: string
+  name: string
+  url: string
+  last_synced_at: string | null
+  created_at: string
+}
+
+export interface ActivityLog {
+  id: string
+  user_id: string
+  action: string
+  entity_type: string
+  entity_id: string | null
+  details: Record<string, unknown> | null
   created_at: string
 }

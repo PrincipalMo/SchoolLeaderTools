@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
-import { supabase, CalendarEvent, WeeklyPriority, ColorCategory } from '../supabase'
+import { supabase, CalendarEvent, WeeklyPriority, ColorCategory, ICalFeed } from '../supabase'
 import { seedWeekData, WEEK_START, TIME_SLOTS } from '../seedData'
+import CalendarImport from './CalendarImport'
 import styles from './CalendarTab.module.css'
 
 const DAYS = ['Monday 5/4', 'Tuesday 5/5', 'Wednesday 5/6', 'Thursday 5/7', 'Friday 5/8']
@@ -30,7 +31,7 @@ function categoryClass(cat: ColorCategory): string {
     climate: styles.catClimate,
     personal: styles.catPersonal,
   }
-  return map[cat] || ''
+  return map[cat] || styles.catNone
 }
 
 interface EditModal {
@@ -40,9 +41,14 @@ interface EditModal {
   isNew: boolean
 }
 
-export default function CalendarTab() {
+interface Props {
+  userId: string
+}
+
+export default function CalendarTab({ userId }: Props) {
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [priorities, setPriorities] = useState<WeeklyPriority[]>([])
+  const [feeds, setFeeds] = useState<ICalFeed[]>([])
   const [loading, setLoading] = useState(true)
   const [editModal, setEditModal] = useState<EditModal | null>(null)
   const [editTitle, setEditTitle] = useState('')
@@ -51,27 +57,30 @@ export default function CalendarTab() {
   const [priorityText, setPriorityText] = useState('')
   const [newPriorityText, setNewPriorityText] = useState('')
   const [saving, setSaving] = useState(false)
+  const [showImport, setShowImport] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
-    await seedWeekData()
-    const [evRes, prRes] = await Promise.all([
-      supabase.from('calendar_events').select('*').eq('week_start', WEEK_START),
-      supabase.from('weekly_priorities').select('*').eq('week_start', WEEK_START).order('sort_order'),
+    await seedWeekData(userId)
+    const [evRes, prRes, feedRes] = await Promise.all([
+      supabase.from('calendar_events').select('*').eq('week_start', WEEK_START).eq('user_id', userId),
+      supabase.from('weekly_priorities').select('*').eq('week_start', WEEK_START).eq('user_id', userId).order('sort_order'),
+      supabase.from('ical_feeds').select('*').eq('user_id', userId).order('created_at'),
     ])
     if (evRes.data) setEvents(evRes.data as CalendarEvent[])
     if (prRes.data) setPriorities(prRes.data as WeeklyPriority[])
+    if (feedRes.data) setFeeds(feedRes.data as ICalFeed[])
     setLoading(false)
-  }, [])
+  }, [userId])
 
   useEffect(() => { load() }, [load])
 
-  function getEvent(day: number, slot: string): CalendarEvent | undefined {
-    return events.find(e => e.day_of_week === day && e.time_slot === slot)
+  function getEventsForCell(day: number, slot: string): CalendarEvent[] {
+    return events.filter(e => e.day_of_week === day && e.time_slot === slot)
   }
 
   function openEditCell(day: number, slot: string) {
-    const ev = getEvent(day, slot)
+    const ev = events.find(e => e.day_of_week === day && e.time_slot === slot && e.source === 'manual')
     setEditModal({ event: ev || null, day, timeSlot: slot, isNew: !ev })
     setEditTitle(ev?.title || '')
     setEditCategory(ev?.color_category || '')
@@ -82,25 +91,34 @@ export default function CalendarTab() {
     setSaving(true)
     if (editModal.isNew && editTitle.trim()) {
       await supabase.from('calendar_events').insert({
+        user_id: userId,
         week_start: WEEK_START,
         day_of_week: editModal.day,
         time_slot: editModal.timeSlot,
         title: editTitle.trim(),
         color_category: editCategory,
+        source: 'manual',
       })
+      await logAction('create', 'calendar_event', { title: editTitle.trim(), day: editModal.day, slot: editModal.timeSlot })
     } else if (!editModal.isNew && editModal.event) {
       if (editTitle.trim()) {
         await supabase.from('calendar_events').update({
           title: editTitle.trim(),
           color_category: editCategory,
         }).eq('id', editModal.event.id)
+        await logAction('update', 'calendar_event', { title: editTitle.trim() })
       } else {
         await supabase.from('calendar_events').delete().eq('id', editModal.event.id)
+        await logAction('delete', 'calendar_event', { title: editModal.event.title })
       }
     }
     setSaving(false)
     setEditModal(null)
     load()
+  }
+
+  async function logAction(action: string, entityType: string, details: object) {
+    await supabase.from('activity_log').insert({ user_id: userId, action, entity_type: entityType, details })
   }
 
   async function togglePriorityStatus(p: WeeklyPriority) {
@@ -120,6 +138,7 @@ export default function CalendarTab() {
   async function addPriority() {
     if (!newPriorityText.trim()) return
     const { data } = await supabase.from('weekly_priorities').insert({
+      user_id: userId,
       week_start: WEEK_START,
       title: newPriorityText.trim(),
       status: '',
@@ -143,6 +162,19 @@ export default function CalendarTab() {
 
   return (
     <div className={styles.container}>
+      <div className={styles.toolbar}>
+        <span className={styles.weekLabel}>Week of May 4 – 8, 2026</span>
+        <button className={styles.importBtn} onClick={() => setShowImport(true)}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Import Calendar
+          {feeds.length > 0 && <span className={styles.feedBadge}>{feeds.length}</span>}
+        </button>
+      </div>
+
       <div className={styles.layout}>
         {/* Calendar grid */}
         <div className={styles.calendarWrap}>
@@ -160,18 +192,23 @@ export default function CalendarTab() {
               <div key={slot} className={styles.row}>
                 <div className={styles.timeCell}>{slot}</div>
                 {[0, 1, 2, 3, 4].map((day) => {
-                  const ev = getEvent(day, slot)
+                  const cellEvents = getEventsForCell(day, slot)
                   return (
                     <div
                       key={day}
-                      className={`${styles.cell} ${ev ? styles.cellFilled : styles.cellEmpty}`}
+                      className={`${styles.cell} ${cellEvents.length ? styles.cellFilled : styles.cellEmpty}`}
                       onClick={() => openEditCell(day, slot)}
                     >
-                      {ev && (
-                        <div className={`${styles.eventChip} ${categoryClass(ev.color_category)}`}>
+                      {cellEvents.map(ev => (
+                        <div
+                          key={ev.id}
+                          className={`${styles.eventChip} ${categoryClass(ev.color_category)} ${ev.source === 'imported' ? styles.chipImported : ''}`}
+                          title={ev.source === 'imported' ? `Imported from calendar` : undefined}
+                        >
+                          {ev.source === 'imported' && <span className={styles.importedDot} />}
                           {ev.title}
                         </div>
-                      )}
+                      ))}
                     </div>
                   )
                 })}
@@ -215,11 +252,7 @@ export default function CalendarTab() {
                     >
                       {p.title}
                     </span>
-                    <button
-                      className={styles.deleteBtn}
-                      onClick={() => deletePriority(p.id)}
-                      title="Delete"
-                    >×</button>
+                    <button className={styles.deleteBtn} onClick={() => deletePriority(p.id)} title="Delete">×</button>
                   </div>
                 )}
               </li>
@@ -236,7 +269,6 @@ export default function CalendarTab() {
             <button className={styles.addBtn} onClick={addPriority}>Add</button>
           </div>
 
-          {/* Legend */}
           <div className={styles.legend}>
             <p className={styles.legendTitle}>Color Legend</p>
             <div className={styles.legendGrid}>
@@ -246,12 +278,26 @@ export default function CalendarTab() {
                   <span className={styles.legendLabel}>{c.label}</span>
                 </div>
               ))}
+              <div className={styles.legendItem}>
+                <span className={`${styles.legendDot} ${styles.catNone}`} style={{ border: '1.5px dashed #9ca3af' }} />
+                <span className={styles.legendLabel}>Imported</span>
+              </div>
             </div>
           </div>
         </aside>
       </div>
 
-      {/* Edit modal */}
+      {showImport && (
+        <CalendarImport
+          userId={userId}
+          weekStart={WEEK_START}
+          feeds={feeds}
+          onFeedsChange={setFeeds}
+          onImported={load}
+          onClose={() => setShowImport(false)}
+        />
+      )}
+
       {editModal && (
         <div className={styles.modalBackdrop} onClick={() => setEditModal(null)}>
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
