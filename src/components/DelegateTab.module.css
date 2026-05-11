@@ -144,10 +144,29 @@
   color: var(--gray-400);
 }
 
+.leaderEmail {
+  display: block;
+  font-size: 11px;
+  color: var(--gray-400);
+  font-style: italic;
+}
+
+.addEmailBtn {
+  background: none;
+  border: none;
+  color: var(--primary-500);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  font-family: var(--font);
+}
+
 .leaderMeta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .leaderCount {
@@ -156,17 +175,190 @@
   white-space: nowrap;
 }
 
-.deleteLeaderBtn {
-  background: none;
-  border: none;
-  color: var(--gray-500);
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-  padding: 2px;
-  transition: color 0.15s;
+/* Send delegation row */
+.sendRow {
+  padding: 8px 16px 4px;
 }
-.deleteLeaderBtn:hover { color: #ef4444; }
+
+.sendBtn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  background: #eff6ff;
+  color: var(--primary-700);
+  border: 1px solid var(--primary-200);
+  border-radius: var(--radius);
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: var(--font);
+  justify-content: center;
+}
+.sendBtn:hover:not(:disabled) { background: var(--primary-100); border-color: var(--primary-400); }
+.sendBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.emailResult {
+  margin: 4px 16px 8px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.emailSentBadge {
+  font-size: 12px;
+  font-weight: 600;
+  color: #15803d;
+}
+
+.emailPendingBadge {
+  font-size: 11px;
+  color: #92400e;
+  background: #fef3c7;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.delegateUrlRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.delegateUrlLabel {
+  font-size: 11px;
+  color: var(--gray-500);
+}
+
+.delegateUrl {
+  font-size: 12px;
+  color: var(--primary-600);
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+.copyBtn {
+  background: var(--gray-200);
+  border: none;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gray-600);
+  cursor: pointer;
+  font-family: var(--font);
+}
+.copyBtn:hover { background: var(--gray-300); }
+
+/* Comments */
+.commentsPanel {
+  margin-top: 10px;
+  border-top: 1px solid var(--gray-200);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.noComments {
+  font-size: 12px;
+  color: var(--gray-400);
+  font-style: italic;
+  text-align: center;
+  padding: 4px 0;
+}
+
+.comment {
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.commentAdmin {
+  background: var(--primary-50);
+  border-left: 3px solid var(--primary-400);
+}
+
+.commentDelegate {
+  background: #f0fdf4;
+  border-left: 3px solid #4ade80;
+}
+
+.commentMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.commentAuthor {
+  font-weight: 700;
+  color: var(--gray-700);
+  font-size: 11px;
+}
+
+.commentTime {
+  font-size: 10px;
+  color: var(--gray-400);
+  margin-left: auto;
+}
+
+.commentText {
+  color: var(--gray-700);
+  line-height: 1.4;
+}
+
+.addCommentRow {
+  display: flex;
+  gap: 6px;
+}
+
+.commentInput {
+  flex: 1;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 12px;
+  outline: none;
+  font-family: var(--font);
+}
+.commentInput:focus { border-color: var(--primary-400); }
+
+.commentSendBtn {
+  background: var(--primary-600);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font);
+}
+.commentSendBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.iconBtnActive {
+  color: var(--primary-600);
+}
+
+.commentCount {
+  font-size: 10px;
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+.emailHint {
+  font-size: 11px;
+  color: var(--gray-400);
+  margin-top: 2px;
+}
 
 /* Tasks */
 .taskList {

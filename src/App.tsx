@@ -4,12 +4,26 @@ import { supabase } from './supabase'
 import AuthPage from './components/AuthPage'
 import CalendarTab from './components/CalendarTab'
 import DelegateTab from './components/DelegateTab'
+import DelegateView from './components/DelegateView'
 import { exportFullRecord } from './utils/exportLog'
 import styles from './App.module.css'
 
 type Tab = 'calendar' | 'delegate'
 
+// Check if this is a delegate access URL
+function getDelegateToken(): string | null {
+  const params = new URLSearchParams(window.location.search)
+  return params.get('token')
+}
+
 export default function App() {
+  const delegateToken = getDelegateToken()
+
+  // If accessed via delegate link, render delegate view immediately (no auth needed)
+  if (delegateToken) {
+    return <DelegateView token={delegateToken} />
+  }
+
   const [user, setUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<Tab>('calendar')
