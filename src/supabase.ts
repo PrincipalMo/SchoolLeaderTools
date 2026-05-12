@@ -29,6 +29,7 @@ export interface CalendarEvent {
   external_uid: string | null
   start_time: string | null
   end_time: string | null
+  is_priority: boolean
   created_at: string
 }
 

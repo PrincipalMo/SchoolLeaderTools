@@ -394,9 +394,10 @@ export default function DelegateView({ token }: Props) {
                             {cellEvents.map(ev => (
                               <div
                                 key={ev.id}
-                                className={styles.eventChip}
+                                className={`${styles.eventChip} ${ev.is_priority ? styles.eventChipPriority : ''}`}
                                 style={categoryStyle(ev.color_category)}
                               >
+                                {ev.is_priority && <span className={styles.priorityStar}>★</span>}
                                 {ev.title}
                               </div>
                             ))}

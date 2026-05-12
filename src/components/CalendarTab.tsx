@@ -59,6 +59,7 @@ export default function CalendarTab({ userId }: Props) {
   const [editModal, setEditModal] = useState<EditModal | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [editCategory, setEditCategory] = useState<ColorCategory>('')
+  const [editIsPriority, setEditIsPriority] = useState(false)
   const [priorityEdit, setPriorityEdit] = useState<string | null>(null)
   const [priorityText, setPriorityText] = useState('')
   const [newPriorityText, setNewPriorityText] = useState('')
@@ -95,6 +96,7 @@ export default function CalendarTab({ userId }: Props) {
     setEditModal({ event: ev || null, day, timeSlot: slot, isNew: !ev })
     setEditTitle(ev?.title || '')
     setEditCategory(ev?.color_category || '')
+    setEditIsPriority(ev?.is_priority || false)
   }
 
   async function saveCell() {
@@ -109,6 +111,7 @@ export default function CalendarTab({ userId }: Props) {
         title: editTitle.trim(),
         color_category: editCategory,
         source: 'manual',
+        is_priority: editIsPriority,
       })
       await logAction('create', 'calendar_event', { title: editTitle.trim(), week: weekStart })
     } else if (!editModal.isNew && editModal.event) {
@@ -116,6 +119,7 @@ export default function CalendarTab({ userId }: Props) {
         await supabase.from('calendar_events').update({
           title: editTitle.trim(),
           color_category: editCategory,
+          is_priority: editIsPriority,
         }).eq('id', editModal.event.id)
         await logAction('update', 'calendar_event', { title: editTitle.trim() })
       } else {
@@ -130,6 +134,13 @@ export default function CalendarTab({ userId }: Props) {
 
   async function logAction(action: string, entityType: string, details: object) {
     await supabase.from('activity_log').insert({ user_id: userId, action, entity_type: entityType, details })
+  }
+
+  async function toggleEventPriority(ev: CalendarEvent, e: React.MouseEvent) {
+    e.stopPropagation()
+    const next = !ev.is_priority
+    await supabase.from('calendar_events').update({ is_priority: next }).eq('id', ev.id)
+    setEvents(prev => prev.map(x => x.id === ev.id ? { ...x, is_priority: next } : x))
   }
 
   async function togglePriorityStatus(p: WeeklyPriority) {
@@ -235,11 +246,19 @@ export default function CalendarTab({ userId }: Props) {
                         {cellEvents.map(ev => (
                           <div
                             key={ev.id}
-                            className={`${styles.eventChip} ${categoryClass(ev.color_category)} ${ev.source === 'imported' ? styles.chipImported : ''}`}
-                            title={ev.source === 'imported' ? 'Imported from calendar' : undefined}
+                            className={`${styles.eventChip} ${categoryClass(ev.color_category)} ${ev.source === 'imported' ? styles.chipImported : ''} ${ev.is_priority ? styles.chipPriority : ''}`}
                           >
-                            {ev.source === 'imported' && <span className={styles.importedDot} />}
-                            {ev.title}
+                            <span className={styles.chipLabel}>
+                              {ev.source === 'imported' && <span className={styles.importedDot} />}
+                              {ev.title}
+                            </span>
+                            <button
+                              className={`${styles.starBtn} ${ev.is_priority ? styles.starOn : styles.starOff}`}
+                              onClick={e => toggleEventPriority(ev, e)}
+                              title={ev.is_priority ? 'Remove priority flag' : 'Mark as priority'}
+                            >
+                              ★
+                            </button>
                           </div>
                         ))}
                       </div>
@@ -255,6 +274,37 @@ export default function CalendarTab({ userId }: Props) {
             <div className={styles.sidebarHeader}>
               <h2 className={styles.sidebarTitle}>Priorities for Week</h2>
             </div>
+
+            {/* Priority events from calendar */}
+            {events.filter(e => e.is_priority).length > 0 && (
+              <div className={styles.priorityEventsSection}>
+                <p className={styles.priorityEventsLabel}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                  </svg>
+                  Priority Events ({events.filter(e => e.is_priority).length})
+                </p>
+                <ul className={styles.priorityEventsList}>
+                  {events.filter(e => e.is_priority).map(ev => (
+                    <li key={ev.id} className={styles.priorityEventItem}>
+                      <span className={`${styles.priorityEventDot} ${categoryClass(ev.color_category)}`} />
+                      <div className={styles.priorityEventText}>
+                        <span className={styles.priorityEventTitle}>{ev.title}</span>
+                        <span className={styles.priorityEventMeta}>
+                          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri'][ev.day_of_week]} · {ev.time_slot}
+                        </span>
+                      </div>
+                      <button
+                        className={styles.starBtnSm}
+                        onClick={e => toggleEventPriority(ev, e)}
+                        title="Remove priority flag"
+                      >★</button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             <ul className={styles.priorityList}>
               {priorities.map((p) => (
                 <li key={p.id} className={styles.priorityItem}>
@@ -366,6 +416,18 @@ export default function CalendarTab({ userId }: Props) {
                   <option key={c.key} value={c.key}>{c.label}</option>
                 ))}
               </select>
+              <label className={styles.priorityCheckLabel}>
+                <input
+                  type="checkbox"
+                  checked={editIsPriority}
+                  onChange={e => setEditIsPriority(e.target.checked)}
+                  className={styles.priorityCheckbox}
+                />
+                <span className={styles.priorityCheckText}>
+                  <span className={styles.priorityCheckStar}>★</span>
+                  Mark as priority event
+                </span>
+              </label>
               {!editModal.isNew && (
                 <p className={styles.deleteHint}>Clear the title and save to remove this event.</p>
               )}
