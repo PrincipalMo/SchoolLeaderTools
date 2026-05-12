@@ -56,7 +56,7 @@ interface Props {
   prefs: Prefs
 }
 
-export default function CalendarTab({ userId, prefs }: Props) {
+function CalendarTab({ userId, prefs }: Props) {
   const [weekStart, setWeekStart] = useState<string>(currentWeekMonday())
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [priorities, setPriorities] = useState<WeeklyPriority[]>([])

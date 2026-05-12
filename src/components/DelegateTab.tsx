@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase, Leader, DelegatedTask } from '../supabase'
+import EmailPreviewModal from './EmailPreviewModal'
 import styles from './DelegateTab.module.css'
 
 const STATUS_LABELS: Record<string, string> = {
@@ -66,6 +67,7 @@ export default function DelegateTab({ userId }: Props) {
   const [expandedTask, setExpandedTask] = useState<string | null>(null)
   const [newComment, setNewComment] = useState('')
   const [addingComment, setAddingComment] = useState(false)
+  const [previewLeader, setPreviewLeader] = useState<(Leader & { email?: string }) | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -317,8 +319,18 @@ export default function DelegateTab({ userId }: Props) {
                   </div>
                 </div>
 
-                {/* Send delegation button */}
+                {/* Send delegation buttons */}
                 <div className={styles.sendRow}>
+                  <button
+                    className={styles.previewBtn}
+                    onClick={() => setPreviewLeader(leaderWithEmail)}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    Preview Email
+                  </button>
                   <button
                     className={styles.sendBtn}
                     onClick={() => sendDelegationEmail(leader)}
@@ -328,7 +340,7 @@ export default function DelegateTab({ userId }: Props) {
                       <line x1="22" y1="2" x2="11" y2="13"/>
                       <polygon points="22 2 15 22 11 13 2 9 22 2"/>
                     </svg>
-                    {isSending ? 'Sending...' : 'Send Tasks & Link'}
+                    {isSending ? 'Sending...' : 'Send'}
                   </button>
                 </div>
 
@@ -537,6 +549,21 @@ export default function DelegateTab({ userId }: Props) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Email preview modal */}
+      {previewLeader && (
+        <EmailPreviewModal
+          leader={previewLeader}
+          tasks={tasksByLeader(previewLeader.id)}
+          weekLabel="May 4–8, 2026"
+          onClose={() => setPreviewLeader(null)}
+          onSend={() => {
+            setPreviewLeader(null)
+            sendDelegationEmail(previewLeader)
+          }}
+          isSending={sendingEmail === previewLeader.id}
+        />
       )}
 
       {/* Add/edit leader modal */}

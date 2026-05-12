@@ -178,24 +178,47 @@
 /* Send delegation row */
 .sendRow {
   padding: 8px 16px 4px;
+  display: flex;
+  gap: 6px;
 }
 
-.sendBtn {
+.previewBtn {
   display: flex;
   align-items: center;
-  gap: 7px;
-  width: 100%;
-  background: #eff6ff;
-  color: var(--primary-700);
-  border: 1px solid var(--primary-200);
+  gap: 6px;
+  flex: 1;
+  background: var(--gray-100);
+  color: var(--gray-700);
+  border: 1px solid var(--gray-300);
   border-radius: var(--radius);
-  padding: 8px 14px;
+  padding: 8px 10px;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
   font-family: var(--font);
   justify-content: center;
+  white-space: nowrap;
+}
+.previewBtn:hover { background: var(--gray-200); border-color: var(--gray-400); }
+
+.sendBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  background: #eff6ff;
+  color: var(--primary-700);
+  border: 1px solid var(--primary-200);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: var(--font);
+  justify-content: center;
+  white-space: nowrap;
 }
 .sendBtn:hover:not(:disabled) { background: var(--primary-100); border-color: var(--primary-400); }
 .sendBtn:disabled { opacity: 0.5; cursor: not-allowed; }
