@@ -46,11 +46,17 @@ interface EditModal {
   isNew: boolean
 }
 
-interface Props {
-  userId: string
+interface Prefs {
+  priority_color: string
+  priority_outline_color: string
 }
 
-export default function CalendarTab({ userId }: Props) {
+interface Props {
+  userId: string
+  prefs: Prefs
+}
+
+export default function CalendarTab({ userId, prefs }: Props) {
   const [weekStart, setWeekStart] = useState<string>(currentWeekMonday())
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [priorities, setPriorities] = useState<WeeklyPriority[]>([])
@@ -246,14 +252,20 @@ export default function CalendarTab({ userId }: Props) {
                         {cellEvents.map(ev => (
                           <div
                             key={ev.id}
-                            className={`${styles.eventChip} ${categoryClass(ev.color_category)} ${ev.source === 'imported' ? styles.chipImported : ''} ${ev.is_priority ? styles.chipPriority : ''}`}
+                            className={`${styles.eventChip} ${categoryClass(ev.color_category)} ${ev.source === 'imported' ? styles.chipImported : ''}`}
+                            style={ev.is_priority ? {
+                              outline: `2px solid ${prefs.priority_outline_color}`,
+                              outlineOffset: '-2px',
+                              fontWeight: 700,
+                            } : undefined}
                           >
                             <span className={styles.chipLabel}>
                               {ev.source === 'imported' && <span className={styles.importedDot} />}
                               {ev.title}
                             </span>
                             <button
-                              className={`${styles.starBtn} ${ev.is_priority ? styles.starOn : styles.starOff}`}
+                              className={styles.starBtn}
+                              style={ev.is_priority ? { color: prefs.priority_color, opacity: 1 } : undefined}
                               onClick={e => toggleEventPriority(ev, e)}
                               title={ev.is_priority ? 'Remove priority flag' : 'Mark as priority'}
                             >
@@ -296,6 +308,7 @@ export default function CalendarTab({ userId }: Props) {
                       </div>
                       <button
                         className={styles.starBtnSm}
+                        style={{ color: prefs.priority_color }}
                         onClick={e => toggleEventPriority(ev, e)}
                         title="Remove priority flag"
                       >★</button>
@@ -424,7 +437,7 @@ export default function CalendarTab({ userId }: Props) {
                   className={styles.priorityCheckbox}
                 />
                 <span className={styles.priorityCheckText}>
-                  <span className={styles.priorityCheckStar}>★</span>
+                  <span className={styles.priorityCheckStar} style={{ color: prefs.priority_color }}>★</span>
                   Mark as priority event
                 </span>
               </label>
@@ -444,3 +457,6 @@ export default function CalendarTab({ userId }: Props) {
     </div>
   )
 }
+
+
+export default CalendarTab

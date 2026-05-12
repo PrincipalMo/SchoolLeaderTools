@@ -1,19 +1,35 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import AuthPage from './components/AuthPage'
 import CalendarTab from './components/CalendarTab'
 import DelegateTab from './components/DelegateTab'
 import DelegateView from './components/DelegateView'
+import SettingsTab from './components/SettingsTab'
 import { exportFullRecord } from './utils/exportLog'
 import styles from './App.module.css'
 
-type Tab = 'calendar' | 'delegate'
+type Tab = 'calendar' | 'delegate' | 'settings'
+
+interface Prefs {
+  priority_color: string
+  priority_outline_color: string
+}
+
+const DEFAULT_PREFS: Prefs = {
+  priority_color: '#f59e0b',
+  priority_outline_color: '#f59e0b',
+}
 
 // Check if this is a delegate access URL
 function getDelegateToken(): string | null {
   const params = new URLSearchParams(window.location.search)
   return params.get('token')
+}
+
+function applyPriorityColors(prefs: Prefs) {
+  document.documentElement.style.setProperty('--priority-color', prefs.priority_color)
+  document.documentElement.style.setProperty('--priority-outline-color', prefs.priority_outline_color)
 }
 
 export default function App() {
@@ -29,6 +45,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('calendar')
   const [exporting, setExporting] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -42,6 +59,14 @@ export default function App() {
 
     return () => subscription.unsubscribe()
   }, [])
+
+  const handlePrefsChange = useCallback((p: Prefs) => {
+    setPrefs(p)
+    applyPriorityColors(p)
+  }, [])
+
+  // Apply defaults on mount
+  useEffect(() => { applyPriorityColors(DEFAULT_PREFS) }, [])
 
   async function signOut() {
     await supabase.auth.signOut()
@@ -104,6 +129,16 @@ export default function App() {
               </svg>
               Delegate to Leaders
             </button>
+            <button
+              className={`${styles.tab} ${activeTab === 'settings' ? styles.tabActive : ''}`}
+              onClick={() => setActiveTab('settings')}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+              Settings
+            </button>
           </nav>
 
           <div className={styles.userArea} onClick={e => e.stopPropagation()}>
@@ -133,7 +168,7 @@ export default function App() {
                     <polyline points="7 10 12 15 17 10"/>
                     <line x1="12" y1="15" x2="12" y2="3"/>
                   </svg>
-                  {exporting ? 'Exporting...' : 'Download Record (CSV)'}
+                  {exporting ? 'Exporting...' : 'Download Full Record (CSV)'}
                 </button>
                 <div className={styles.menuDivider} />
                 <button className={`${styles.menuItem} ${styles.menuItemDanger}`} onClick={signOut}>
@@ -151,8 +186,11 @@ export default function App() {
       </header>
 
       <main className={styles.main}>
-        {activeTab === 'calendar' && <CalendarTab userId={user.id} />}
+        {activeTab === 'calendar' && <CalendarTab userId={user.id} prefs={prefs} />}
         {activeTab === 'delegate' && <DelegateTab userId={user.id} />}
+        {activeTab === 'settings' && (
+          <SettingsTab userId={user.id} onPrefsChange={handlePrefsChange} />
+        )}
       </main>
     </div>
   )

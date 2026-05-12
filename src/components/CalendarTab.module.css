@@ -261,18 +261,7 @@
   opacity: 1;
 }
 
-.chipPriority {
-  outline: 2px solid #f59e0b;
-  outline-offset: -2px;
-  font-weight: 700;
-  animation: priorityPulse 2.5s ease infinite;
-}
-
-@keyframes priorityPulse {
-  0%   { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.3); }
-  50%  { box-shadow: 0 0 0 3px rgba(245, 158, 11, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
-}
+/* priority chip styling applied via inline style with user prefs color */
 
 .chipLabel {
   display: flex;
@@ -292,17 +281,15 @@
   line-height: 1;
   padding: 1px 1px 0;
   flex-shrink: 0;
-  transition: transform 0.15s, opacity 0.15s;
-}
-
-.starOn {
-  color: #f59e0b;
-  opacity: 1;
-}
-
-.starOff {
-  color: var(--gray-400);
+  color: var(--gray-300);
   opacity: 0;
+  transition: transform 0.15s, opacity 0.15s, color 0.15s;
+}
+
+/* When a chip has is_priority, the star gets inline color+opacity:1 overrides */
+
+.eventChip:hover .starBtn {
+  opacity: 1;
 }
 
 .starBtn:hover {
